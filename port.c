@@ -1,8 +1,12 @@
 
 #include <sys/types.h>
+#include <sys/mman.h>
 #include <sys/socket.h>
-#include <netpacket/packet.h>
+// This one does not include the additional packet socket messages
+// #include <netpacket/packet.h>
 #include <net/ethernet.h> /* the L2 protocols */
+
+#include <linux/if_packet.h> /* struct tpacket_req */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,9 +34,35 @@ create_receiver( int index ) {
         exit( -1 );
     }
 
+    struct tpacket_req request;
+    request.tp_block_size = 4096;
+    request.tp_frame_size = 2048;
+    request.tp_block_nr = 4;
+    request.tp_frame_nr = 8;
+
+    result = setsockopt( sock, SOL_PACKET, PACKET_RX_RING, &request, sizeof request );
+
+    if ( result < 0 ) {
+        perror( "RX_RING" );
+        exit( -1 );
+    }
+
+    size_t size = request.tp_block_size * request.tp_block_nr;
+
+    void *buffer = mmap( 0, size, PROT_READ | PROT_WRITE, MAP_SHARED, sock, 0 );
+
+    if ( buffer == NULL ) {
+        perror( "mmap" );
+        exit( -1 );
+    }
+
+    printf( "ring at %p\n", buffer );
+
     struct ring *ring = (struct ring *)malloc( sizeof (struct ring) );
 
     if ( ring == NULL ) {
+        ring->fd = sock;
+        ring->buffer = buffer;
     }
 }
 
