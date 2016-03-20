@@ -42,14 +42,56 @@ static int debug = 0;
 
 /*
  */
+static void
+dump_v6addr( unsigned char *buffer ) {
+    int i;
+
+    printf( "%02x%02x:", buffer[0], buffer[1] );
+    for ( i = 2 ; i < 16 ; i += 2 ) {
+        if ( buffer[i] == 0 && buffer[i+1] == 0 ) continue;
+        printf( ":%02x%02x", buffer[i], buffer[i+1] );
+    }
+}
+
+/*
+ */
+static void
+dump_packet( unsigned char *buffer, ssize_t length ) {
+    printf( "%02x:%02x:%02x:%02x:%02x:%02x <- ", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5] );
+    buffer += 6;
+    printf( "%02x:%02x:%02x:%02x:%02x:%02x [", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5] );
+    buffer += 6;
+    printf( "%02x%02x] ", buffer[0], buffer[1] );
+    buffer += 2;
+    length -= 14;
+
+    printf( "%02x%02x%02x%02x%02x%02x%02x%02x ", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7] );
+    buffer += 8; length -= 8;
+    dump_v6addr( buffer ); buffer += 16; length -= 16;
+    printf( " " );
+    dump_v6addr( buffer ); buffer += 16; length -= 16;
+    printf( " " );
+
+    int i;
+
+    for ( i = 0 ; i < length ; ++i ) {
+        printf( " %02x", buffer[i] );
+    }
+    printf( "\n" );
+}
+
+/*
+ */
 static ssize_t
 forward( int in, int out ) {
     unsigned char buffer[2048];
 
     ssize_t octets = read( in, buffer, sizeof(buffer) );
 
-    ssize_t written = write( out, buffer, octets );
+    // ssize_t written = write( out, buffer, octets );
+    dump_packet( buffer, octets );
 
+#if 0
     if ( written < 0 ) {
         perror( "write failed" );
     }
@@ -59,6 +101,8 @@ forward( int in, int out ) {
     }
 
     return written;
+#endif
+    return octets;
 }
 
 /*
