@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 
 struct ring {
     int fd;
@@ -19,15 +20,29 @@ struct ring {
 
 int
 create_receiver( int index ) {
+    int result;
+
     int sock = socket( AF_PACKET, SOCK_RAW, htons(ETH_P_ALL) );
+
+    int version = TPACKET_V2;
+    result = setsockopt( sock, SOL_PACKET, PACKET_VERSION, &version, sizeof version );
+
+    if ( result < 0 ) {
+        perror( "PKT VERSION" );
+        exit( -1 );
+    }
 
     struct sockaddr_ll address;
 
+    memset( &address, 0, sizeof address );
     address.sll_family = AF_PACKET;
     address.sll_protocol = htons( ETH_P_ALL );
     address.sll_ifindex = index;
+    address.sll_hatype = 0;
+    address.sll_pkttype = 0;
+    address.sll_halen = 0;
 
-    int result = bind( sock, (struct sockaddr *)&address, sizeof (struct sockaddr_ll) );
+    result = bind( sock, (struct sockaddr *)&address, sizeof (struct sockaddr_ll) );
 
     if ( result < 0 ) {
         perror( "bind" );
@@ -51,7 +66,7 @@ create_receiver( int index ) {
 
     void *buffer = mmap( 0, size, PROT_READ | PROT_WRITE, MAP_SHARED, sock, 0 );
 
-    if ( buffer == NULL ) {
+    if ( buffer == MAP_FAILED ) {
         perror( "mmap" );
         exit( -1 );
     }
