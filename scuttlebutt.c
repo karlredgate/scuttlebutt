@@ -4,8 +4,9 @@
 #include "port.h"
 
 int main( int argc, char **argv ) {
-    int index = if_nametoindex( "sink" );
-    create_receiver( index );
+    int index = if_nametoindex( "switch0" );
+    struct ring *ring = create_receiver( index );
+    receive_loop( ring );
     return 0;
 }
 

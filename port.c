@@ -11,14 +11,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <poll.h>
 #include <string.h>
 
+/*
+ * calculate block address from base time block number
+ * tpacket2_hdr *packet = (tpacket2_hdr *) (base * block);
+ */
 struct ring {
+    unsigned char *base;
     int fd;
-    unsigned char *buffer;
+    int blocks;
+    int frames;
+    int block_size;
+    int frame_size;
 };
 
-int
+struct ring *
 create_receiver( int index ) {
     int result;
 
@@ -49,6 +58,8 @@ create_receiver( int index ) {
         exit( -1 );
     }
 
+    printf( "bind to index %d\n", index );
+
     struct tpacket_req request;
     request.tp_block_size = 4096;
     request.tp_frame_size = 2048;
@@ -76,14 +87,46 @@ create_receiver( int index ) {
     struct ring *ring = (struct ring *)malloc( sizeof (struct ring) );
 
     if ( ring == NULL ) {
-        ring->fd = sock;
-        ring->buffer = buffer;
+        perror( "malloc" );
+        exit( -1 );
     }
+    ring->fd = sock;
+    ring->base = buffer;
+    ring->block_size = 4096;
+    ring->frame_size = 2048;
+    ring->blocks = 4;
+    ring->frames = 8;
+
+    return ring;
 }
 
 int
 create_transmitter( int index ) {
     int packet_socket = socket( AF_PACKET, SOCK_RAW, 0 );
+}
+
+void
+receive_loop( struct ring *ring ) {
+    printf("receive loop with block count = %d\n", ring->blocks );
+
+    struct pollfd io;
+    io.fd = ring->fd;
+    io.events = POLLIN | POLLERR;
+    io.revents = 0;
+
+    int frame = 0;
+    int block = 0;
+
+    while (1) {
+        poll( &io, 1, 5 );
+        printf("receive\n" );
+
+        block = (block + 1) % ring->blocks;
+        printf( "check block %d\n", block );
+        void *block_address = ring->base + (ring->block_size * block);
+        printf( "block address is %p\n", block_address );
+        struct tpacket2_hdr *packet = (struct tpacket2_hdr *) block_address;
+    }
 }
 
 /* vim: set autoindent expandtab sw=4 : */
