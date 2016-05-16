@@ -1,6 +1,6 @@
 
 OS := $(shell uname -s)
-include Makefiles/$(OS).mk
+include $(wildcard Makefiles/$(OS).mk )
 
 default: twine
 
