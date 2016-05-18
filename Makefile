@@ -5,7 +5,7 @@
 default: test
 
 test: sink pair scuttlebutt
-	sudo ./scuttlebutt
+	sudo ./scuttlebutt --debug
 
 scuttlebutt: scuttlebutt.o port.o
 
